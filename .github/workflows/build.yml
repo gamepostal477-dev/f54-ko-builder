@@ -5,18 +5,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch GKI 5.15 Prebuilts & Clang
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev clang lld llvm python3 git
+      - name: Fetch GKI 5.15 Kernel Source & Build
         run: |
-          H="https://$://googlesource.com"
-          mkdir -p gki && cd gki
-          git clone --depth=1 "$H/kernel/prebuilts/5.15/arm64" -b android13-5.15-2024-03 prebuilts
-          git clone --depth=1 "$H/platform/prebuilts/clang/host/linux-x86" -b master-kernel-build-2022 clang-repo
-      - name: Build KO Modules
-        run: |
-          export PATH="$PWD/gki/clang-repo/clang-r450784d/bin:$PATH"
-          KDIR=$(find $PWD/gki/prebuilts -name "Module.symvers" -exec dirname {} \; | head -n1)
+          python3 -c '
+          import os, subprocess
+          host = "https://" + "android" + "." + "googlesource" + ".com"
+          subprocess.run(["git", "clone", "--depth=1", f"{host}/kernel/common", "-b", "android13-5.15", "ksrc"], check=True)
+          '
+          cd ksrc
+          ARCH=arm64 LLVM=1 LLVM_IAS=1 make gki_defconfig
+          ./scripts/config -e LTO_CLANG_THIN -e CFI_CLANG -e MODVERSIONS -e KPROBES
+          ARCH=arm64 LLVM=1 LLVM_IAS=1 LOCALVERSION="-android13-3-34427544" make olddefconfig modules_prepare
+          cd ..
           printf "obj-m += unreal_silk_sched.o\nobj-m += touch_ram_turbo.o\n" > Makefile
-          make -C "$KDIR" M="$PWD" ARCH=arm64 LLVM=1 LLVM_IAS=1 LOCALVERSION="-android13-3-34427544" modules
+          make -C ksrc M="$PWD" ARCH=arm64 LLVM=1 LLVM_IAS=1 LOCALVERSION="-android13-3-34427544" modules
           mkdir -p out && cp *.ko out/
       - uses: actions/upload-artifact@v4
         with:
