@@ -18,10 +18,10 @@ static int is_priority_thread(const char *comm) {
 }
 
 static int handler_pre(struct kprobe *p, struct pt_regs *regs) {
-    struct task_struct *task = (struct task_struct *)regs->regs;
-    if (task && is_priority_thread(task->comm)) {
-        if (task->prio > 100)
-            task->prio = 100;
+    struct task_struct *task = (struct task_struct *)regs->regs[0];
+    if (task && !IS_ERR(task) && is_priority_thread(task->comm)) {
+        if (task->prio > 105)
+            task->prio = 105;
     }
     return 0;
 }
