@@ -1,0 +1,25 @@
+name: Build F54 GKI Modules
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev curl tar xz-utils git cpio
+      - name: Fetch GKI 5.15 Prebuilts & Clang
+        run: |
+          mkdir -p gki && cd gki
+          git clone --depth=1 https://googlesource.com -b android13-5.15-2024-03 prebuilts
+          git clone --depth=1 https://googlesource.com -b master-kernel-build-2022 clang-repo
+      - name: Build KO Modules
+        run: |
+          export PATH="$PWD/gki/clang-repo/clang-r450784d/bin:$PATH"
+          KDIR=$(find $PWD/gki/prebuilts -name "Module.symvers" -exec dirname {} \; | head -n1)
+          printf "obj-m += unreal_silk_sched.o\nobj-m += touch_ram_turbo.o\n" > Makefile
+          make -C "$KDIR" M="$PWD" ARCH=arm64 LLVM=1 LLVM_IAS=1 LOCALVERSION="-android13-3-34427544" modules
+          mkdir -p out && cp *.ko out/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: f54-magic-ko
+          path: out/*.ko
