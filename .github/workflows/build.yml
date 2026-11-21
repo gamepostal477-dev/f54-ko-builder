@@ -7,7 +7,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Fetch GKI 5.15 Prebuilts & Clang
         run: |
-          H="https://googlesource.com"
+          H="https://$://googlesource.com"
           mkdir -p gki && cd gki
           git clone --depth=1 "$H/kernel/prebuilts/5.15/arm64" -b android13-5.15-2024-03 prebuilts
           git clone --depth=1 "$H/platform/prebuilts/clang/host/linux-x86" -b master-kernel-build-2022 clang-repo
